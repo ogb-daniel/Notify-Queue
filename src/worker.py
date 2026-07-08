@@ -8,7 +8,8 @@ import uuid
 import sys
 
 from src.core.config import settings
-from src.core.redis import init_redis, close_redis, get_redis
+from src.core.database import engine, Base, AsyncSessionLocal
+from src.core.redis import init_redis, close_redis
 from src.services.worker_service import run_worker
 
 
@@ -41,10 +42,12 @@ async def main() -> None:
 
     worker_id = args.worker_id or f"worker-{uuid.uuid4().hex[:8]}"
 
-    redis_client = init_redis()
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
+    redis_client = await init_redis()
     await redis_client.ping()
-    logger.info("Redis connected: %s", f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/0")
+    logger.info("Redis connected: %s", settings.REDIS_URL)
 
     shutdown_event = asyncio.Event()
 
@@ -60,7 +63,7 @@ async def main() -> None:
         logger.info("Starting worker: %s", worker_id)
         await run_worker(
             worker_id=worker_id,
-            session_factory=_session_factory,
+            session_factory=AsyncSessionLocal,
             redis_client=redis_client,
             shutdown_event=shutdown_event,
         )
