@@ -1,4 +1,5 @@
 
+
 import uuid
 import logging
 
@@ -6,8 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
+from src.core.redis import get_redis
 from src.schemas import CreateJobRequest, JobResponse, JobStatusResponse
 from src.services.job_service import JobService
+from src.services.redis_lock import RedisLock
 from src.domain.result import Ok, Err
 
 logger = logging.getLogger(__name__)
@@ -18,7 +21,8 @@ router = APIRouter(tags=["jobs"])
 def _get_job_service(
     session: AsyncSession = Depends(get_db),
 ) -> JobService:
-    return JobService(session)
+    redis_lock = RedisLock(get_redis())
+    return JobService(session, redis_lock)
 
 
 @router.post(
@@ -33,6 +37,7 @@ async def schedule_job(
     request: CreateJobRequest,
     service: JobService = Depends(_get_job_service),
 ) -> JobResponse:
+
     result = await service.schedule_job(request)
 
     match result:

@@ -4,9 +4,11 @@ import logging
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.database import get_session
+from src.core.database import get_db
+from src.core.redis import get_redis
 from src.schemas import RegisterWebhookRequest, WebhookPayload
 from src.repositories.job_repository import JobRepository
+from src.services.redis_lock import RedisLock
 
 logger = logging.getLogger(__name__)
 
@@ -19,13 +21,15 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 )
 async def register_webhook(
     request: RegisterWebhookRequest,
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_db),
 ) -> dict:
-    repo = JobRepository(session)
+    redis_lock = RedisLock(get_redis())
+    repo = JobRepository(session, redis_lock)
     config = await repo.create_webhook_config(
         url=request.url,
         events=request.events,
     )
+    await session.commit()
     return {
         "id": str(config.id),
         "url": config.url,
