@@ -1,4 +1,5 @@
 
+
 import uuid
 import logging
 from datetime import datetime, timezone
@@ -7,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import Job, JobStatus
 from src.repositories.job_repository import JobRepository
+from src.services.redis_lock import RedisLock
 from src.schemas import (
     CreateJobRequest,
     JobResponse,
@@ -20,8 +22,9 @@ logger = logging.getLogger(__name__)
 
 class JobService:
 
-    def __init__(self, session: AsyncSession):
-        self._repo = JobRepository(session)
+
+    def __init__(self, session: AsyncSession, redis_lock: RedisLock):
+        self._repo = JobRepository(session, redis_lock)
 
     async def schedule_job(
         self,

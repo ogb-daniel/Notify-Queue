@@ -23,6 +23,7 @@ class NotificationSender(Protocol):
 
     async def send(
         self,
+        job_id: str,
         recipient: str,
         payload: dict,
     ) -> Result:
