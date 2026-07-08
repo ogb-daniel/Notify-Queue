@@ -79,7 +79,7 @@ Tests use a real PostgreSQL and Redis instance to accurately test concurrency an
 
 ```bash
 # Run all tests
-export TEST_DATABASE_URL="postgresql+asyncpg://notify:notify@localhost:5432/notifyqueue"
+export TEST_DATABASE_URL="postgresql+asyncpg://notify:notify@localhost:5432/notifyqueue_test"
 export TEST_REDIS_URL="redis://localhost:6379/1"
 
 pytest -v
