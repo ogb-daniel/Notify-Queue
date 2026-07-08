@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from typing import AsyncIterator
 from src.core.config import settings
 from src.core.database import engine, Base
-from src.api.v1.api import router as api_router
+from src.api.v1.api import api_router
 from src.core.redis import init_redis, close_redis
 import logging
 import sys
