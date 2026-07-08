@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 class RedisRateLimiter:
     def __init__(self, client: redis.Redis):
         self._client = client
-        self._settings = get_settings()
-        
+        self._settings = settings
+
     def _key(self, recipient: str) -> str:
         return f"{self._settings.REDIS_RATE_LIMIT_PREFIX}{recipient}"
    

@@ -6,7 +6,7 @@ import httpx
 
 from src.models import Job, JobStatus
 from src.schemas import WebhookPayload
-from src.core.config import get_settings
+from src.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,6 @@ async def fire_webhook(
     event: str,
     error: str | None = None,
 ) -> None:
-    settings = get_settings()
 
     payload = WebhookPayload(
         event=event,
