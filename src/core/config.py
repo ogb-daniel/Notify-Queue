@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     WORKER_POLL_INTERVAL_SECONDS: float = 0.5
     WORKER_BATCH_SIZE: int = 10
 
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_LOCK_TIMEOUT_SECONDS: int = 300
+    REDIS_LOCK_PREFIX: str = "notify:claim:"
+    REDIS_RATE_LIMIT_PREFIX: str = "notify:rate:"
+
+
     FAILURE_RATE: float = 0.2 
     MAX_RETRIES: int = 5
     BACKOFF_BASE_SECONDS: float = 2.0
