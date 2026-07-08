@@ -13,8 +13,9 @@ router = APIRouter(tags=["metrics"])
 
 def _get_job_service(
     session: AsyncSession = Depends(get_db),
+    redis_client=Depends(get_redis),
 ) -> JobService:
-    redis_lock = RedisLock(get_redis())
+    redis_lock = RedisLock(redis_client)
     return JobService(session, redis_lock)
 
 

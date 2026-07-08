@@ -22,8 +22,9 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 async def register_webhook(
     request: RegisterWebhookRequest,
     session: AsyncSession = Depends(get_db),
+    redis_client=Depends(get_redis),
 ) -> dict:
-    redis_lock = RedisLock(get_redis())
+    redis_lock = RedisLock(redis_client)
     repo = JobRepository(session, redis_lock)
     config = await repo.create_webhook_config(
         url=request.url,
