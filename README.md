@@ -2,17 +2,6 @@
 
 A distributed, delayed job & notification delivery system built with FastAPI, PostgreSQL, and Redis.
 
-Designed to be the "Gold Standard" for scheduling and delivering notifications (Email, SMS, Push) with strict exactly-once delivery guarantees, graceful retry mechanisms, and horizontal scalability.
-
-## Features
-
-- **Robust Scheduling:** Schedule notifications for immediate delivery or delayed to an absolute timestamp (`send_at`) or relative delay (`delay_seconds`).
-- **Distributed Concurrency:** Run multiple worker processes safely. Uses a dual-layer lock (Redis `SET NX EX` + Postgres Compare-And-Swap) to guarantee exactly-once delivery without database contention.
-- **Priority Queues:** 5-tier priority system (Critical to Bulk) ensures important messages skip the line.
-- **Sliding Window Rate Limiting:** Built-in Redis-backed rate limiting ($O(\log N)$ via Sorted Sets) prevents spamming users.
-- **Fault Tolerance:** Exponential backoff with jitter for transient network failures. Hard failures are routed to a Dead Letter Queue (DLQ) to prevent poison message loops.
-- **Webhooks:** Push-based event system. Register webhooks to receive real-time HTTP POSTs when jobs are sent, failed, or dead-lettered.
-
 ## Architecture & Design
 
 Please refer to the detailed [DESIGN.md](./DESIGN.md) document for a deep dive into the architecture, the Redis/Postgres locking model, and trade-offs made.
@@ -26,7 +15,8 @@ The easiest way to run the application is via Docker Compose, which spins up Pos
 ```bash
 docker-compose up -d
 ```
-*Wait a few seconds for Postgres and Redis to become healthy.*
+
+_Wait a few seconds for Postgres and Redis to become healthy._
 
 ### 2. Install Dependencies
 
