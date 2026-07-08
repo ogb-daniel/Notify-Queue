@@ -78,9 +78,9 @@ python scripts/seed.py --count 1000
 Tests use a real PostgreSQL and Redis instance to accurately test concurrency and locking.
 
 ```bash
-# Run all tests
-export TEST_DATABASE_URL="postgresql+asyncpg://notify:notify@localhost:5432/notifyqueue_test"
-export TEST_REDIS_URL="redis://localhost:6379/1"
+# 1. Create the test database (one-time setup)
+docker exec notify-queue-db-1 psql -U notify -d notifyqueue -c "CREATE DATABASE notifyqueue_test;"
 
-pytest -v
+# 2. Run all tests
+.venv/bin/pytest -v
 ```
