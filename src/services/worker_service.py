@@ -1,4 +1,5 @@
 
+
 import asyncio
 import logging
 import uuid
@@ -7,14 +8,14 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 import redis.asyncio as aioredis
 
-from src.core.config import settings, Settings
+from src.core.config import settings
 from src.models import Job, ChannelType
 from src.repositories.job_repository import JobRepository
 from src.senders.base import NotificationSender
 from src.senders.email_sender import EmailSender
 from src.senders.sms_sender import SmsSender
 from src.senders.push_sender import PushSender
-from src.services.webhook_service import fire_webhook
+from src.services.webhook_service import fire_webhooks
 from src.services.redis_lock import RedisLock
 from src.services.redis_rate_limiter import RedisRateLimiter
 from src.domain.backoff import calculate_next_retry, should_dead_letter
@@ -37,10 +38,10 @@ async def _process_single_job(
     job: Job,
     lock_token: str,
     repo: JobRepository,
+    session: AsyncSession,
     redis_lock: RedisLock,
     rate_limiter: RedisRateLimiter,
     sender: NotificationSender,
-    settings: Settings,
 ) -> None:
 
     try:
@@ -59,13 +60,16 @@ async def _process_single_job(
             )
             return
 
-        result = await sender.send(job.recipient, job.payload)
+        result = await sender.send(str(job.id), job.recipient, job.payload)
 
         match result:
             case Ok(receipt):
                 await repo.mark_sent(job.id)
                 await rate_limiter.record_send(job.recipient)
-                await fire_webhook(job, event="sent")
+                await fire_webhooks(
+                    job, event="sent",
+                    session=session, redis_lock=redis_lock,
+                )
                 logger.info(
                     "Job %s sent: channel=%s recipient=%s provider_id=%s",
                     job.id, job.channel.value, job.recipient,
@@ -79,8 +83,10 @@ async def _process_single_job(
                         reason=f"Exhausted {job.max_retries} retries",
                         last_error=error.message,
                     )
-                    await fire_webhook(
-                        job, event="dead_lettered", error=error.message,
+                    await fire_webhooks(
+                        job, event="dead_lettered",
+                        session=session, redis_lock=redis_lock,
+                        error=error.message,
                     )
                     logger.warning(
                         "Job %s dead-lettered: attempts=%d/%d error=%s",
@@ -95,8 +101,10 @@ async def _process_single_job(
                     )
                     retry_at = datetime.now(timezone.utc) + delay
                     await repo.mark_failed(job.id, error.message, retry_at)
-                    await fire_webhook(
-                        job, event="failed", error=error.message,
+                    await fire_webhooks(
+                        job, event="failed",
+                        session=session, redis_lock=redis_lock,
+                        error=error.message,
                     )
                     logger.info(
                         "Job %s failed (will retry): attempt=%d/%d "
@@ -114,16 +122,15 @@ async def run_worker(
     redis_client: aioredis.Redis,
     shutdown_event: asyncio.Event,
 ) -> None:
-    
-    
+   
     senders = _build_sender_registry(settings.FAILURE_RATE)
     redis_lock = RedisLock(redis_client)
     rate_limiter = RedisRateLimiter(redis_client)
 
     logger.info(
-        "Worker %s starting (poll=%.1fs, batch=%d, redis=%s)",
+        "Worker %s starting (poll=%.1fs, batch=%d)",
         worker_id, settings.WORKER_POLL_INTERVAL_SECONDS,
-        settings.WORKER_BATCH_SIZE, settings.REDIS_URL,
+        settings.WORKER_BATCH_SIZE,
     )
 
     while not shutdown_event.is_set():
@@ -162,8 +169,8 @@ async def run_worker(
                             continue
 
                         await _process_single_job(
-                            job, lock_token, repo, redis_lock,
-                            rate_limiter, sender, settings,
+                            job, lock_token, repo, session,
+                            redis_lock, rate_limiter, sender,
                         )
 
                     await session.commit()
