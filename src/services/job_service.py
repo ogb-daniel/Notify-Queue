@@ -42,6 +42,7 @@ class JobService:
             )
 
             response = JobResponse.model_validate(job)
+            await self._repo._session.commit()
 
             if created:
                 logger.info(

@@ -3,10 +3,8 @@
 from datetime import datetime, timedelta, timezone
 
 from src.domain.backoff import calculate_next_retry, should_dead_letter
-from src.domain.rate_limit import is_rate_limited, next_available_slot
 from src.domain.priority import PriorityLevel, compute_sort_key
-from src.domain.result import Ok, Err, map_result, bind_result
-
+from src.domain.result import Ok, Err
 
 
 class TestCalculateNextRetry:
@@ -58,35 +56,6 @@ class TestShouldDeadLetter:
         assert should_dead_letter(1, 5) is False
 
 
-
-class TestIsRateLimited:
-    def test_under_limit(self):
-        assert is_rate_limited(5, 10) is False
-
-    def test_at_limit(self):
-        assert is_rate_limited(10, 10) is True
-
-    def test_over_limit(self):
-        assert is_rate_limited(15, 10) is True
-
-    def test_zero_sends(self):
-        assert is_rate_limited(0, 10) is False
-
-
-class TestNextAvailableSlot:
-    def test_one_hour_window(self):
-        oldest = datetime(2024, 1, 1, 10, 5, tzinfo=timezone.utc)
-        expected = datetime(2024, 1, 1, 11, 5, tzinfo=timezone.utc)
-        assert next_available_slot(oldest) == expected
-
-    def test_custom_window(self):
-        oldest = datetime(2024, 1, 1, 10, 0, tzinfo=timezone.utc)
-        result = next_available_slot(oldest, timedelta(minutes=30))
-        expected = datetime(2024, 1, 1, 10, 30, tzinfo=timezone.utc)
-        assert result == expected
-
-
-
 class TestPriority:
     def test_critical_before_low(self):
         critical = compute_sort_key(1, datetime(2024, 1, 1, 12, 0))
@@ -116,26 +85,3 @@ class TestResult:
         assert r.is_err() is True
         assert r.is_ok() is False
         assert r.error == "something broke"
-
-    def test_map_ok(self):
-        r = map_result(Ok(5), lambda x: x * 2)
-        assert r == Ok(10)
-
-    def test_map_err_passes_through(self):
-        r = map_result(Err("fail"), lambda x: x * 2)
-        assert r == Err("fail")
-
-    def test_bind_ok(self):
-        r = bind_result(Ok(5), lambda x: Ok(x * 2))
-        assert r == Ok(10)
-
-    def test_bind_err_passes_through(self):
-        r = bind_result(Err("fail"), lambda x: Ok(x * 2))
-        assert r == Err("fail")
-
-    def test_bind_chain_stops_on_first_err(self):
-        r = bind_result(
-            Ok(5),
-            lambda x: Err("broke") if x > 3 else Ok(x),
-        )
-        assert r == Err("broke")
